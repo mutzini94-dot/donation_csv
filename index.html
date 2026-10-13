@@ -377,6 +377,11 @@ button.rec.on{background:var(--accent-soft);box-shadow:inset 0 -2px 0 var(--acce
 .btn.go:hover{opacity:.88;background:var(--ink)}
 .btn[disabled]{opacity:.5;cursor:default}
 .loading{padding:48px 16px;text-align:center;color:var(--ink-3);font-size:13px}
+.sb-help{border:1px solid var(--line-2);border-radius:4px;padding:12px;display:flex;flex-direction:column;gap:8px;background:var(--sunk);font-size:12.5px;color:var(--ink-2)}
+.sb-help b{color:var(--ink)}
+.sb-help ol{margin:0;padding-left:18px;line-height:1.75}
+.sb-help pre{margin:0;padding:10px 12px;background:var(--surface);border:1px solid var(--line);border-radius:4px;font:12px/1.6 var(--mono);color:var(--ink);overflow-x:auto;white-space:pre}
+.sb-help .row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -426,6 +431,7 @@ button.rec.on{background:var(--accent-soft);box-shadow:inset 0 -2px 0 var(--acce
         <label for="sbTable">테이블<input id="sbTable" class="inp" placeholder="donations" autocomplete="off" spellcheck="false"></label>
       </div>
       <div class="upl-opts"><span class="note" id="sbStatus">연결 안 됨</span><span class="inline"><button type="button" class="btn sm" id="sbDisconnect">연결 해제</button><button type="submit" class="btn sm go" id="sbConnect">연결하고 불러오기</button></span></div>
+      <div class="sb-help" id="sbHelp" hidden></div>
       <div class="upl-guide"><b>필요한 열</b> donated_at(시간) · donor(도네이터) · amount(금액) <span class="muted">· 있으면 써요: grade(등급) · type(유형) · message(내용) · source(출처). 한글 열 이름도 그대로 읽어요. 테이블에 anon 읽기(select) RLS 정책이 있어야 해요. service_role·secret 키는 넣지 마세요.</span></div>
     </form>
     <div data-pane="csv" class="supa" hidden>
@@ -1437,6 +1443,19 @@ document.querySelectorAll('[data-srcpane]').forEach(b=>b.addEventListener('click
 function sbFill(){$('#sbUrl').value=SB.url||'';$('#sbKey').value=SB.key||'';$('#sbTable').value=SB.table||'donations';
   $('#sbStatus').textContent=DS.origin==='supabase'?`연결됨 · ${SB.table} · ${fmtTime(DS.loadedAt)}에 불러옴`:SB.url?'저장된 연결 정보가 있어요':'연결 안 됨';
   $('#sbDisconnect').disabled=!!SUPABASE_PRESET.url||!SB.url}
+const qid=n=>/^[a-z_][a-z0-9_]*$/.test(n)?n:'"'+String(n).replace(/"/g,'""')+'"';
+function sbHelp(h){
+  const box=$('#sbHelp');if(!h){box.hidden=true;box.innerHTML='';return}
+  if(h.kind==='empty'){const t='public.'+qid(h.table),pol=`"${String(h.table).replace(/"/g,'')}: anon read"`;
+    const sql=`-- 1) 데이터가 들어 있는지 확인\nselect count(*) from ${t};\n\n-- 2) anon 키로 읽을 수 있게 허용\ngrant select on ${t} to anon;\nalter table ${t} enable row level security;\ndrop policy if exists ${pol} on ${t};\ncreate policy ${pol} on ${t}\n  for select to anon using (true);`;
+    box.innerHTML=`<b>읽은 행이 0개일 때 확인할 것</b><ol><li>Supabase <b>SQL Editor</b>에서 아래 1)을 실행해 행 수를 확인해요. 0이면 Table Editor에서 데이터를 먼저 넣어요.</li><li>행이 있는데도 0개로 나오면 RLS 정책이 없어서예요. 아래 2)를 실행한 뒤 다시 <b>연결하고 불러오기</b>를 눌러요.</li></ol>
+      <div class="row"><span class="note">anon 읽기 정책을 만들면 anon 키를 가진 누구나 이 테이블을 읽을 수 있어요</span><button type="button" class="btn sm" data-copysql>SQL 복사</button></div><pre id="sbSql">${esc(sql)}</pre>`}
+  else box.innerHTML=`<b>열 이름이 맞지 않아요</b><ol><li>대시보드는 시간(donated_at·created_at·시간), 도네이터(donor·nickname·도네이터), 금액(amount·금액) 열이 필요해요.</li><li>이 테이블의 열: <code>${h.keys.map(esc).join(', ')}</code></li><li>열 이름을 바꾸거나, 위 이름으로 된 뷰(view)를 만들어 그 이름을 테이블 칸에 넣어 주세요.</li></ol>`;
+  box.hidden=false;
+}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-copysql]');if(!b)return;const pre=$('#sbSql'),txt=pre.textContent;
+  const sel=()=>{const rg=document.createRange();rg.selectNodeContents(pre);const g=getSelection();g.removeAllRanges();g.addRange(rg);toast('SQL을 선택했어요. 복사해서 쓰세요')};
+  try{navigator.clipboard.writeText(txt).then(()=>toast('SQL을 복사했어요'),sel)}catch(err){sel()}});
 function checkKey(k){
   if(!k)throw new Error('anon 키를 입력해 주세요.');
   if(/^sb_secret_/.test(k))throw new Error('secret 키는 쓸 수 없어요. 브라우저에 노출돼도 되는 anon(publishable) 키를 넣어 주세요.');
@@ -1456,16 +1475,17 @@ async function fetchSupabase(cfg){
     return r.json();
   };
   const probe=await req('select=*&limit=1');
-  if(!probe.length)throw new Error(`'${table}' 테이블에서 읽은 행이 없어요. 테이블이 비어 있거나 RLS 정책이 읽기를 막고 있어요.`);
+  if(!probe.length){const e=new Error(`'${table}' 테이블에서 읽은 행이 없어요. 테이블이 비어 있거나 RLS 정책이 읽기를 막고 있어요. 아래 안내의 SQL을 실행해 주세요.`);e.help={kind:'empty',table};throw e}
   const keys=Object.keys(probe[0]),ti=findCol(keys,'시간');
-  if(ti<0)throw new Error('시간 열(donated_at 또는 시간)이 없어요.');
+  if(ti<0){const e=new Error(`시간 열(donated_at 또는 시간)이 없어요. 이 테이블의 열: ${keys.join(', ')}`);e.help={kind:'cols',table,keys};throw e}
   const col=/^[a-z_][a-z0-9_]*$/.test(keys[ti])?keys[ti]:`"${keys[ti]}"`;
   const PAGE=1000,all=[];
   for(let from=0;;from+=PAGE){
     const page=await req(`select=*&order=${encodeURIComponent(col)}.asc`,{'Range-Unit':'items',Range:`${from}-${from+PAGE-1}`});
     all.push(...page);if(page.length<PAGE||all.length>=200000)break;
   }
-  const p=parseTable(keys,all.map(o=>keys.map(k=>o[k]==null?'':typeof o[k]==='object'?JSON.stringify(o[k]):String(o[k]))));
+  let p;try{p=parseTable(keys,all.map(o=>keys.map(k=>o[k]==null?'':typeof o[k]==='object'?JSON.stringify(o[k]):String(o[k]))))}
+  catch(err){const e=new Error(`${err.message}. 이 테이블의 열: ${keys.join(', ')}`);e.help={kind:'cols',table,keys};throw e}
   return{...p,total:all.length,table};
 }
 async function loadSupabase(cfg,{silent}={}){
@@ -1474,10 +1494,10 @@ async function loadSupabase(cfg,{silent}={}){
     const r=await fetchSupabase(cfg);
     SB={url:cfg.url.trim().replace(/\/+$/,''),key:cfg.key.trim(),table:r.table};if(!SUPABASE_PRESET.url)store.set(SBKEY,SB);
     setData(r.out,r.table,'supabase',null);DS.loadedAt=new Date();persist();
-    resetView();compute();render();openUpload(false);sbFill();
+    resetView();compute();render();openUpload(false);sbFill();sbHelp(null);
     if(!silent)notice('ok',`Supabase '${r.table}'에서 ${r.total.toLocaleString()}행을 불러왔어요 · ${fmtYMD(DS.START)} ~ ${fmtYMD(DS.END)} · 도네이터 ${DS.donors.length}명${r.skipped?` · 시간이나 금액이 비어 있는 ${r.skipped}행은 건너뛰었어요`:''}`);
     return true;
-  }catch(err){notice('err',err.message);openUpload(true,'supa');sbFill();return false}
+  }catch(err){notice('err',err.message);openUpload(true,'supa');sbHelp(err.help);$('#sbStatus').textContent='연결하지 못했어요 · 입력한 값은 그대로 두었어요';return false}
   finally{btns.forEach(b=>b.disabled=false);$('#sbConnect').textContent='연결하고 불러오기'}
 }
 $('#supaForm').addEventListener('submit',e=>{e.preventDefault();loadSupabase({url:$('#sbUrl').value,key:$('#sbKey').value.trim(),table:$('#sbTable').value||'donations'})});
