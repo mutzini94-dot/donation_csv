@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>후원 내역 분석</title>
-<script>try{const t=localStorage.getItem('tn-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script>
+<script>try{const u=JSON.parse(localStorage.getItem('tn-ui')||'{}'),r=document.documentElement;if(u.theme==='light'||u.theme==='dark')r.dataset.theme=u.theme;if(['card','compact','contrast'].includes(u.ui))r.dataset.ui=u.ui;if(['green','orange','gray'].includes(u.accent))r.dataset.accent=u.accent}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
@@ -244,6 +244,81 @@ button.rec.on{background:var(--accent-soft);box-shadow:inset 0 -2px 0 var(--acce
 #tip{position:fixed;z-index:50;pointer-events:none;background:var(--tip-bg);color:var(--tip-ink);font-size:12px;line-height:1.55;padding:7px 9px;border-radius:4px;max-width:260px;font-variant-numeric:tabular-nums}
 #tip b{display:block;font-weight:600}
 #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--tip-bg);color:var(--tip-ink);padding:8px 14px;border-radius:4px;font-size:13px;z-index:60;max-width:calc(100% - 32px)}
+
+/* ───────── 디자인 선택: 스타일(data-ui) · 강조색(data-accent) ───────── */
+/* 강조색: 한 가지 기준색에서 히트맵·순위 색을 섞어 만들어 라이트·다크 모두 맞아요 */
+:root[data-accent="green"]{--data:#2c9a5a}
+:root[data-accent="orange"]{--data:#dd7324}
+:root[data-accent="gray"]{--data:#6c6c75}
+:root[data-accent]{
+  --accent:var(--data);--accent-soft:color-mix(in oklab,var(--data) 15%,var(--surface));
+  --data-hover:color-mix(in oklab,var(--data) 70%,var(--ink));
+  --h1:color-mix(in oklab,var(--data) 14%,var(--surface));--h2:color-mix(in oklab,var(--data) 30%,var(--surface));
+  --h3:color-mix(in oklab,var(--data) 48%,var(--surface));--h4:color-mix(in oklab,var(--data) 66%,var(--surface));
+  --h5:var(--data);--h6:color-mix(in oklab,var(--data) 70%,var(--ink));
+  --c1:color-mix(in oklab,var(--data) 70%,var(--ink));--c2:var(--data);
+  --c3:color-mix(in oklab,var(--data) 55%,var(--surface));--c4:color-mix(in oklab,var(--data) 28%,var(--surface));
+}
+/* 카드 */
+:root[data-ui="card"] .card,:root[data-ui="card"] .rep{border-color:transparent;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.05),0 4px 14px rgba(0,0,0,.05)}
+:root[data-ui="card"] .ch{border-bottom:0;padding-bottom:0}
+:root[data-ui="card"] .g{gap:20px}
+:root[data-ui="card"] .kpis{background:transparent;border:0;gap:12px;overflow:visible}
+:root[data-ui="card"] .kpi{background:var(--surface);border:0;margin:0;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.05),0 4px 14px rgba(0,0,0,.05)}
+:root[data-ui="card"] :is(.seg,.btn,.sel,.inp,.notice,.drop){border-radius:8px}
+:root[data-ui="card"] .tscroll,:root[data-ui="card"] .recs{border-radius:10px}
+:root[data-ui="card"] :is(.track,.meter,.track b,.meter b){border-radius:99px}
+:root[data-ui="card"] .cell{border-radius:4px}
+:root[data-ui="card"] .colw .cb{border-radius:4px 4px 0 0}
+:root[data-ui="card"] .tab[aria-selected="true"]{border-bottom-color:var(--accent)}
+:root[data-ui="card"] .seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+/* 촘촘하게 */
+:root[data-ui="compact"] body{font-size:13px}
+:root[data-ui="compact"] .g{gap:10px}
+:root[data-ui="compact"] .card{padding:0 12px 12px;gap:10px}
+:root[data-ui="compact"] .ch{margin-inline:-12px;padding:7px 12px}
+:root[data-ui="compact"] .kpis{margin-bottom:10px}
+:root[data-ui="compact"] .kpi{padding:8px 12px 9px}
+:root[data-ui="compact"] .kpi .v{font-size:17px}
+:root[data-ui="compact"] .tbl td,:root[data-ui="compact"] .tbl th{padding:4px 8px}
+:root[data-ui="compact"] .cols{height:120px}
+:root[data-ui="compact"] .cell{height:19px}
+:root[data-ui="compact"] .hbars{gap:7px}
+:root[data-ui="compact"] .tabs{margin-bottom:12px}
+:root[data-ui="compact"] .tab{padding:6px 0 7px}
+:root[data-ui="compact"] .top{padding-block:10px 8px}
+:root[data-ui="compact"] .rep{padding:16px;gap:14px}
+/* 고대비 */
+:root[data-ui="contrast"]{--line:#8f8f8f;--line-2:#4d4d4d;--ink:#000;--ink-2:#222;--ink-3:#444;--sunk:#ececec;--bg:#fff}
+@media (prefers-color-scheme: dark){:root[data-ui="contrast"]:not([data-theme="light"]){--line:#77777f;--line-2:#b5b5bd;--ink:#fff;--ink-2:#e2e2e6;--ink-3:#c2c2c8;--sunk:#26262b;--bg:#000;--surface:#0e0e10}}
+:root[data-ui="contrast"][data-theme="dark"]{--line:#77777f;--line-2:#b5b5bd;--ink:#fff;--ink-2:#e2e2e6;--ink-3:#c2c2c8;--sunk:#26262b;--bg:#000;--surface:#0e0e10}
+:root[data-ui="contrast"] :is(.card,.kpis,.rep){border:2px solid var(--ink)}
+:root[data-ui="contrast"] .ch{border-bottom:2px solid var(--ink)}
+:root[data-ui="contrast"] .kpi{border-color:var(--ink)}
+:root[data-ui="contrast"] .tab[aria-selected="true"]{border-bottom-width:3px}
+:root[data-ui="contrast"] :is(.btn,.seg,.sel,.inp){border-color:var(--ink)}
+:root[data-ui="contrast"] .tbl th{color:var(--ink);font-weight:600}
+
+/* 디자인 패널 */
+.ui-wrap{position:relative}
+.ui-panel{position:absolute;right:0;top:calc(100% + 6px);z-index:40;width:310px;max-width:calc(100vw - 32px);background:var(--surface);border:1px solid var(--line-2);border-radius:6px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.14);display:flex;flex-direction:column;gap:16px}
+.ui-sec{display:flex;flex-direction:column;gap:8px}
+.ui-sec>b{font-size:12px;font-weight:600;color:var(--ink-2)}
+.ui-opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.ui-opts button{font:inherit;font-size:12.5px;color:var(--ink);text-align:left;background:transparent;border:1px solid var(--line);border-radius:4px;padding:6px;cursor:pointer;display:flex;flex-direction:column;gap:5px}
+.ui-opts button:hover{border-color:var(--line-2)}
+.ui-opts button[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.pv{display:block;height:38px;background:var(--bg);border-radius:2px;position:relative;overflow:hidden}
+.pv i{position:absolute;background:var(--surface)}
+.pv-tool i{inset:6px;border:1px solid var(--line-2);border-radius:2px;background:linear-gradient(var(--line-2),var(--line-2)) 0 9px/100% 1px no-repeat,var(--surface)}
+.pv-card i{inset:6px;border-radius:7px;box-shadow:0 2px 6px rgba(0,0,0,.18)}
+.pv-compact i{inset:4px;border:1px solid var(--line-2);background:repeating-linear-gradient(var(--surface) 0 4px,var(--line) 4px 5px)}
+.pv-contrast i{inset:6px;border:2px solid var(--ink)}
+.ui-sw{display:flex;gap:8px;flex-wrap:wrap}
+.ui-sw button{font:inherit;font-size:12px;color:var(--ink-2);display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--line);border-radius:4px;padding:4px 9px 4px 6px;cursor:pointer}
+.ui-sw button[aria-pressed="true"]{border-color:var(--ink);color:var(--ink)}
+.ui-sw i{width:14px;height:14px;border-radius:50%}
+.ui-foot{display:flex;justify-content:space-between;align-items:center;gap:8px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -263,7 +338,22 @@ button.rec.on{background:var(--accent-soft);box-shadow:inset 0 -2px 0 var(--acce
       </div>
       <select id="ftype" class="sel" aria-label="유형"></select>
       <button class="btn" id="uplOpen" aria-expanded="false" aria-controls="upl">CSV 업로드</button>
-      <button class="btn" id="themeBtn" aria-label="화면 테마 바꾸기"></button>
+      <div class="ui-wrap"><button class="btn" id="uiBtn" aria-expanded="false" aria-controls="uiPanel">디자인</button>
+        <div class="ui-panel" id="uiPanel" role="dialog" aria-label="디자인 설정" hidden>
+          <div class="ui-sec"><b>스타일</b><div class="ui-opts">
+            <button data-ui="tool"><span class="pv pv-tool"><i></i></span>관리 도구</button>
+            <button data-ui="card"><span class="pv pv-card"><i></i></span>카드</button>
+            <button data-ui="compact"><span class="pv pv-compact"><i></i></span>촘촘하게</button>
+            <button data-ui="contrast"><span class="pv pv-contrast"><i></i></span>고대비</button></div></div>
+          <div class="ui-sec"><b>강조색</b><div class="ui-sw">
+            <button data-accent="blue"><i style="background:#2a6fdb"></i>파랑</button>
+            <button data-accent="green"><i style="background:#2c9a5a"></i>초록</button>
+            <button data-accent="orange"><i style="background:#dd7324"></i>주황</button>
+            <button data-accent="gray"><i style="background:#6c6c75"></i>회색</button></div></div>
+          <div class="ui-sec"><b>테마</b><div class="seg" role="group" aria-label="테마">
+            <button data-theme-opt="system">시스템</button><button data-theme-opt="light">라이트</button><button data-theme-opt="dark">다크</button></div></div>
+          <div class="ui-foot"><span class="note">이 브라우저에 저장돼요</span><button class="btn sm" id="uiReset">기본값으로</button></div>
+        </div></div>
     </div>
   </header>
   <div id="notice" class="notice" role="status" hidden><span id="noticeText"></span><button id="noticeClose" aria-label="알림 닫기">닫기</button></div>
@@ -1105,12 +1195,32 @@ document.addEventListener('pointermove',e=>{const t=e.target.closest&&e.target.c
 document.addEventListener('pointerleave',()=>tip.hidden=true);
 addEventListener('scroll',()=>tip.hidden=true,{passive:true});
 
-/* ───────── 테마: 시스템 → 라이트 → 다크 ───────── */
-const THEMES=[['system','시스템 테마'],['light','라이트'],['dark','다크']];
-function applyTheme(t){const r=document.documentElement;if(t==='system')delete r.dataset.theme;else r.dataset.theme=t;
-  $('#themeBtn').textContent=THEMES.find(x=>x[0]===t)[1];try{t==='system'?localStorage.removeItem('tn-theme'):localStorage.setItem('tn-theme',t)}catch(e){}}
-let theme=document.documentElement.dataset.theme||'system';applyTheme(theme);
-$('#themeBtn').addEventListener('click',()=>{theme=THEMES[(THEMES.findIndex(x=>x[0]===theme)+1)%3][0];applyTheme(theme)});
+/* ───────── 디자인 선택 ───────── */
+const UI_DEF={ui:'tool',accent:'blue',theme:'system'};
+const UI=Object.assign({},UI_DEF,store.get('tn-ui',{}));
+function applyUI(){
+  const r=document.documentElement;
+  UI.ui==='tool'?delete r.dataset.ui:r.dataset.ui=UI.ui;
+  UI.accent==='blue'?delete r.dataset.accent:r.dataset.accent=UI.accent;
+  UI.theme==='system'?delete r.dataset.theme:r.dataset.theme=UI.theme;
+  document.querySelectorAll('#uiPanel [data-ui]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.ui===UI.ui));
+  document.querySelectorAll('#uiPanel [data-accent]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.accent===UI.accent));
+  document.querySelectorAll('#uiPanel [data-theme-opt]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.themeOpt===UI.theme));
+  store.set('tn-ui',UI);
+  requestAnimationFrame(drawCharts);
+}
+function openUI(open){
+  const p=$('#uiPanel'),b=$('#uiBtn');p.hidden=!open;b.setAttribute('aria-expanded',open);
+  if(open&&innerWidth<560){const rc=b.getBoundingClientRect();Object.assign(p.style,{position:'fixed',left:'16px',right:'16px',width:'auto',top:rc.bottom+6+'px'})}else p.removeAttribute('style');
+}
+$('#uiBtn').addEventListener('click',e=>{e.stopPropagation();openUI($('#uiPanel').hidden)});
+$('#uiPanel').addEventListener('click',e=>{const t=e.target.closest('button');if(!t)return;
+  if(t.dataset.ui)UI.ui=t.dataset.ui;else if(t.dataset.accent)UI.accent=t.dataset.accent;else if(t.dataset.themeOpt)UI.theme=t.dataset.themeOpt;
+  else if(t.id==='uiReset')Object.assign(UI,UI_DEF);else return;applyUI()});
+document.addEventListener('click',e=>{if(!$('#uiPanel').hidden&&!e.target.closest('.ui-wrap'))openUI(false)});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#uiPanel').hidden){openUI(false);$('#uiBtn').focus()}});
+addEventListener('resize',()=>{if(!$('#uiPanel').hidden)openUI(true)});
+applyUI();
 
 /* ───────── CSV 업로드 ───────── */
 const SAMPLE={name:$('#rawCsv').dataset.name,text:$('#rawCsv').textContent};
