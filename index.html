@@ -367,6 +367,16 @@ button.rec.on{background:var(--accent-soft);box-shadow:inset 0 -2px 0 var(--acce
 .ov-item button:hover{background:var(--sunk);color:var(--ink)}
 .ov-item button:focus-visible{outline:2px solid var(--accent)}
 .ov-item button[disabled]{opacity:.3;cursor:default;background:none}
+.src-tabs{align-self:flex-start}
+.supa{display:flex;flex-direction:column;gap:12px}
+.supa-row{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,2fr) minmax(0,1fr);gap:10px}
+@media (max-width:720px){.supa-row{grid-template-columns:1fr}}
+.supa label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--ink-2)}
+.supa .inp{width:100%;font-family:var(--mono);font-size:12.5px;padding:6px 9px}
+.btn.go{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.go:hover{opacity:.88;background:var(--ink)}
+.btn[disabled]{opacity:.5;cursor:default}
+.loading{padding:48px 16px;text-align:center;color:var(--ink-3);font-size:13px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -385,7 +395,8 @@ button.rec.on{background:var(--accent-soft);box-shadow:inset 0 -2px 0 var(--acce
         <button data-p="30" aria-pressed="false">30일</button>
       </div>
       <select id="ftype" class="sel" aria-label="유형"></select>
-      <button class="btn" id="uplOpen" aria-expanded="false" aria-controls="upl">CSV 업로드</button>
+      <button class="btn" id="refreshBtn" hidden>새로고침</button>
+      <button class="btn" id="uplOpen" aria-expanded="false" aria-controls="upl">데이터 연결</button>
       <div class="ui-wrap"><button class="btn" id="uiBtn" aria-expanded="false" aria-controls="uiPanel">디자인</button>
         <div class="ui-panel" id="uiPanel" role="dialog" aria-label="디자인 설정" hidden>
           <div class="ui-sec"><b>스타일</b><div class="ui-opts">
@@ -406,10 +417,22 @@ button.rec.on{background:var(--accent-soft);box-shadow:inset 0 -2px 0 var(--acce
   </header>
   <div id="notice" class="notice" role="status" hidden><span id="noticeText"></span><button id="noticeClose" aria-label="알림 닫기">닫기</button></div>
   <section class="card upl" id="upl" hidden>
-    <div class="ch"><div><h2>후원 내역 CSV 업로드</h2><p>같은 형식의 CSV를 올리면 모든 화면이 그 데이터로 다시 계산돼요. 파일은 이 브라우저 안에서만 읽어요</p></div><button class="btn sm" id="uplClose">닫기</button></div>
-    <label class="drop" id="dropZone"><b>CSV 파일을 끌어다 놓거나 눌러서 선택</b><span>여러 파일을 한 번에 고르면 합쳐서 분석해요 · UTF-8, EUC-KR 모두 읽어요</span><input type="file" id="csvFile" accept=".csv,text/csv" multiple></label>
-    <div class="upl-opts"><label class="chk" for="uplMerge"><input type="checkbox" id="uplMerge"> 지금 데이터에 합치기 · 파일끼리 겹치는 행은 한 번만 세요</label><button class="btn sm" id="uplReset">기본 파일로 되돌리기</button></div>
-    <div class="upl-guide"><b>열</b> 시간 · 도네이터 · 등급 · 유형 · 금액 · 내용 · 출처 <span class="muted">(시간·도네이터·금액은 꼭 있어야 해요)</span></div>
+    <div class="ch"><div><h2>데이터 연결</h2><p>Supabase 테이블을 직접 읽거나 CSV 파일을 올려요. 연결 정보와 파일은 이 브라우저에만 저장돼요</p></div><button class="btn sm" id="uplClose">닫기</button></div>
+    <div class="seg src-tabs" role="group" aria-label="데이터 소스"><button data-srcpane="supa" aria-pressed="true">Supabase</button><button data-srcpane="csv" aria-pressed="false">CSV 파일</button></div>
+    <form class="supa" id="supaForm" data-pane="supa" novalidate>
+      <div class="supa-row">
+        <label for="sbUrl">Project URL<input id="sbUrl" class="inp" placeholder="https://프로젝트.supabase.co" autocomplete="off" spellcheck="false"></label>
+        <label for="sbKey">anon 키 (publishable)<input id="sbKey" class="inp" type="password" placeholder="eyJ… 또는 sb_publishable_…" autocomplete="off" spellcheck="false"></label>
+        <label for="sbTable">테이블<input id="sbTable" class="inp" placeholder="donations" autocomplete="off" spellcheck="false"></label>
+      </div>
+      <div class="upl-opts"><span class="note" id="sbStatus">연결 안 됨</span><span class="inline"><button type="button" class="btn sm" id="sbDisconnect">연결 해제</button><button type="submit" class="btn sm go" id="sbConnect">연결하고 불러오기</button></span></div>
+      <div class="upl-guide"><b>필요한 열</b> donated_at(시간) · donor(도네이터) · amount(금액) <span class="muted">· 있으면 써요: grade(등급) · type(유형) · message(내용) · source(출처). 한글 열 이름도 그대로 읽어요. 테이블에 anon 읽기(select) RLS 정책이 있어야 해요. service_role·secret 키는 넣지 마세요.</span></div>
+    </form>
+    <div data-pane="csv" class="supa" hidden>
+      <label class="drop" id="dropZone"><b>CSV 파일을 끌어다 놓거나 눌러서 선택</b><span>여러 파일을 한 번에 고르면 합쳐서 분석해요 · UTF-8, EUC-KR 모두 읽어요</span><input type="file" id="csvFile" accept=".csv,text/csv" multiple></label>
+      <div class="upl-opts"><label class="chk" for="uplMerge"><input type="checkbox" id="uplMerge"> 지금 데이터에 합치기 · 파일끼리 겹치는 행은 한 번만 세요</label><button class="btn sm" id="uplReset">기본 파일로 되돌리기</button></div>
+      <div class="upl-guide"><b>열</b> 시간 · 도네이터 · 등급 · 유형 · 금액 · 내용 · 출처 <span class="muted">(시간·도네이터·금액은 꼭 있어야 해요)</span></div>
+    </div>
   </section>
 
   <nav class="tabs" role="tablist" aria-label="분석 화면">
@@ -941,25 +964,36 @@ function parseCSV(text){
   return out;
 }
 const COLS=['시간','도네이터','등급','유형','금액','내용','출처'];
+/* 열 이름: CSV 한글 이름과 Supabase 영문 이름을 모두 알아봐요 */
+const ALIAS={시간:['시간','donated_at','created_at','time','datetime','date','일시'],도네이터:['도네이터','donor','nickname','name','후원자','닉네임'],
+  등급:['등급','grade','tier'],유형:['유형','type','kind'],금액:['금액','amount','cash','price'],내용:['내용','message','content','msg','메시지'],출처:['출처','source','origin']};
+function findCol(head,k){const low=head.map(h=>String(h).trim().toLowerCase());for(const a of ALIAS[k]){const i=low.indexOf(a.toLowerCase());if(i>=0)return i}return -1}
+/* 시간: 시간대가 붙은 값(timestamptz)은 한국 시간으로 바꾸고, 없으면 적힌 그대로 써요 */
+function parseTime(v){
+  v=String(v||'').trim();
+  if(/[T ]\d{1,2}:\d{2}/.test(v)&&/(Z|[+-]\d{2}(:?\d{2})?)$/.test(v)){const dt=new Date(v.replace(' ','T'));if(isNaN(dt))return null;const k=new Date(dt.getTime()+9*36e5);return[k.getUTCFullYear(),k.getUTCMonth()+1,k.getUTCDate(),k.getUTCHours(),k.getUTCMinutes()]}
+  const m=/(\d{4})[-./](\d{1,2})[-./](\d{1,2})[ T]+(\d{1,2}):(\d{2})/.exec(v);return m?[+m[1],+m[2],+m[3],+m[4],+m[5]]:null;
+}
 function decode(buf){try{return new TextDecoder('utf-8',{fatal:true}).decode(buf)}catch(e){return new TextDecoder('euc-kr').decode(buf)}}
+function parseTable(head,rows){
+  head=head.map(h=>String(h).trim());const I={};COLS.forEach(k=>I[k]=findCol(head,k));
+  const miss=['시간','도네이터','금액'].filter(k=>I[k]<0);
+  if(miss.length)throw new Error(`필요한 열이 없어요: ${miss.join(', ')}`);
+  const cell=(r,k)=>I[k]>=0?String(r[I[k]]??'').trim():'';
+  const out=[];let skipped=0;
+  rows.forEach(r=>{
+    const tm=parseTime(cell(r,'시간')),amount=+cell(r,'금액').replace(/[^\d]/g,'');
+    if(!tm||!amount){skipped++;return}
+    const [y,mo,da,hh,mi]=tm,t=new Date(y,mo-1,da,hh,mi),d=Math.round(Date.UTC(y,mo-1,da)/864e5);
+    out.push({t,d,hour:hh,wd:wdOf(d),donor:cell(r,'도네이터')||'(빈 값)',grade:cell(r,'등급'),type:cell(r,'유형')||'(빈 값)',amount,msg:cell(r,'내용'),src:cell(r,'출처')});
+  });
+  if(!out.length)throw new Error('읽을 수 있는 행이 없어요. 시간(YYYY-MM-DD HH:MM)과 금액 값을 확인해 주세요.');
+  return{out,skipped,head};
+}
 function parseRows(text){
   const rows=parseCSV(text.replace(/^﻿/,'').trim()).filter(r=>r.some(c=>c.trim()));
   if(rows.length<2)throw new Error('행이 없는 파일이에요.');
-  const head=rows.shift().map(h=>h.trim()),I={};COLS.forEach(k=>I[k]=head.indexOf(k));
-  const miss=['시간','도네이터','금액'].filter(k=>I[k]<0);
-  if(miss.length)throw new Error(`필요한 열이 없어요: ${miss.join(', ')}`);
-  const cell=(r,k)=>I[k]>=0?(r[I[k]]||'').trim():'';
-  const out=[];let skipped=0;
-  rows.forEach(r=>{
-    const m=/(\d{4})[-./](\d{1,2})[-./](\d{1,2})[ T]+(\d{1,2}):(\d{2})/.exec(cell(r,'시간'));
-    const amount=+cell(r,'금액').replace(/[^\d]/g,'');
-    if(!m||!amount){skipped++;return}
-    const t=new Date(+m[1],m[2]-1,+m[3],+m[4],+m[5]);
-    const d=Math.round(Date.UTC(+m[1],m[2]-1,+m[3])/864e5);
-    out.push({t,d,hour:t.getHours(),wd:wdOf(d),donor:cell(r,'도네이터')||'(빈 값)',grade:cell(r,'등급'),type:cell(r,'유형')||'(빈 값)',amount,msg:cell(r,'내용'),src:cell(r,'출처')});
-  });
-  if(!out.length)throw new Error('읽을 수 있는 행이 없어요. 시간(YYYY-MM-DD HH:MM)과 금액 열을 확인해 주세요.');
-  return{out,skipped,head};
+  return parseTable(rows.shift(),rows);
 }
 const rowKey=x=>`${x.t.getTime()}|${x.donor}|${x.amount}|${x.msg}`;
 /* 파일끼리 겹치는 행은 한 번만, 한 파일 안의 같은 행은 그대로 둬요 */
@@ -1057,7 +1091,8 @@ const hbar=(lb,val,w,tip)=>`<div class="hb"${tip?' '+tipAttr(tip):''}><div class
 let CUR,PREV,RG;
 function compute(){
   RG=ranges();CUR=stats(RG.cur);PREV=RG.prev?stats(RG.prev):null;
-  const chip=$('#dsName');chip.textContent=`${DS.name} · ${ROWS.length.toLocaleString()}행`;chip.classList.toggle('up',DS.origin==='upload');
+  const chip=$('#dsName');chip.textContent=DS.origin==='supabase'?`Supabase · ${DS.name} · ${ROWS.length.toLocaleString()}행 · ${fmtTime(DS.loadedAt)} 불러옴`:`${DS.name} · ${ROWS.length.toLocaleString()}행`;
+  chip.classList.toggle('up',DS.origin!=='sample');$('#refreshBtn').hidden=DS.origin!=='supabase';
   $('#rangeText').textContent=`${fmtYMD(RG.cur[0])} ~ ${fmtYMD(RG.cur[1])}${RG.prev?` · 직전 ${S.period}일과 비교`:' · 전체 기간'}`;
 }
 const HOURS=[...Array(24).keys()],HROWS=[1,2,3,4,5,6,0];
@@ -1349,18 +1384,23 @@ applyUI();
 
 /* ───────── CSV 업로드 ───────── */
 const SAMPLE={name:$('#rawCsv').dataset.name,text:$('#rawCsv').textContent};
-const UPKEY='tn-csv2-upload';
+const UPKEY='tn-csv2-upload',SRCKEY='tn-source',SBKEY='tn-supa';
+/* 배포용 기본 연결: 여기에 채우면 방문자 모두가 이 테이블을 읽어요. 공개 저장소에는 비워 두세요 */
+const SUPABASE_PRESET={url:'',key:'',table:'donations'};
+let SB=Object.assign({url:'',key:'',table:'donations'},SUPABASE_PRESET.url?SUPABASE_PRESET:store.get(SBKEY,{}));
+const setSource=v=>store.set(SRCKEY,v);
 function notice(kind,msg){const n=$('#notice');n.className='notice '+kind;$('#noticeText').textContent=msg;n.hidden=false}
 function resetView(){S.type='all';S.rec='all';S.dq='';S.donorSel=null;S.week=0;S.dlimit=30}
 function persist(){
+  setSource(DS.origin);
   if(DS.origin!=='upload'){try{localStorage.removeItem(UPKEY)}catch(e){}return true}
   try{localStorage.setItem(UPKEY,JSON.stringify({name:DS.name,texts:DS.texts}));return true}catch(e){return false}
 }
 function loadTexts(texts,name,origin){setData(mergeRows(texts.map(t=>parseRows(t).out)),name,origin,texts)}
-function openUpload(open){$('#upl').hidden=!open;$('#uplOpen').setAttribute('aria-expanded',open);if(open)$('#upl').scrollIntoView({block:'nearest'})}
+function openUpload(open,pane){if(pane)srcPane(pane);$('#upl').hidden=!open;$('#uplOpen').setAttribute('aria-expanded',open);if(open)$('#upl').scrollIntoView({block:'nearest'})}
 async function handleFiles(list){
   const files=[...list].filter(f=>/\.csv$/i.test(f.name)||/csv|text\/plain/.test(f.type));
-  if(!files.length){notice('err','CSV 파일만 올릴 수 있어요.');openUpload(true);return}
+  if(!files.length){notice('err','CSV 파일만 올릴 수 있어요.');openUpload(true,'csv');return}
   try{
     const texts=[],lists=[];let skipped=0;
     for(const f of files){
@@ -1377,7 +1417,7 @@ async function handleFiles(list){
     notice('ok',`${label} 파일을 적용했어요 · ${ROWS.length.toLocaleString()}행 · ${fmtYMD(DS.START)} ~ ${fmtYMD(DS.END)} · 도네이터 ${DS.donors.length}명`
       +(skipped?` · 시간이나 금액이 비어 있는 ${skipped}행은 건너뛰었어요`:'')+(dup?` · 파일끼리 겹친 ${dup}행은 한 번만 셌어요`:'')
       +(saved?'':' · 이 브라우저에 저장하지 못해 새로고침하면 기본 파일로 돌아가요'));
-  }catch(err){notice('err',err.message);openUpload(true)}
+  }catch(err){notice('err',err.message);openUpload(true,'csv')}
 }
 $('#uplOpen').addEventListener('click',()=>openUpload($('#upl').hidden));
 $('#uplClose').addEventListener('click',()=>openUpload(false));
@@ -1386,15 +1426,79 @@ $('#csvFile').addEventListener('change',e=>{if(e.target.files.length)handleFiles
 $('#uplReset').addEventListener('click',()=>{loadTexts([SAMPLE.text],SAMPLE.name,'sample');persist();resetView();compute();render();openUpload(false);notice('ok',`기본 파일(${SAMPLE.name})로 되돌렸어요`)});
 const dz=$('#dropZone'),ov=$('#dropOv');let dragDepth=0;
 const hasFiles=e=>[...(e.dataTransfer?.types||[])].includes('Files');
-addEventListener('dragenter',e=>{if(!hasFiles(e))return;e.preventDefault();dragDepth++;if($('#upl').hidden)ov.hidden=false;else dz.classList.add('over')});
+addEventListener('dragenter',e=>{if(!hasFiles(e))return;e.preventDefault();dragDepth++;if($('#upl').hidden||$('[data-pane="csv"]').hidden)ov.hidden=false;else dz.classList.add('over')});
 addEventListener('dragover',e=>{if(hasFiles(e))e.preventDefault()});
 addEventListener('dragleave',e=>{if(!hasFiles(e))return;dragDepth=Math.max(0,dragDepth-1);if(!dragDepth){ov.hidden=true;dz.classList.remove('over')}});
 addEventListener('drop',e=>{if(!hasFiles(e))return;e.preventDefault();dragDepth=0;ov.hidden=true;dz.classList.remove('over');handleFiles(e.dataTransfer.files)});
 
-(()=>{
+/* ───────── Supabase ───────── */
+function srcPane(v){document.querySelectorAll('[data-srcpane]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.srcpane===v));document.querySelectorAll('[data-pane]').forEach(p=>p.hidden=p.dataset.pane!==v)}
+document.querySelectorAll('[data-srcpane]').forEach(b=>b.addEventListener('click',()=>srcPane(b.dataset.srcpane)));
+function sbFill(){$('#sbUrl').value=SB.url||'';$('#sbKey').value=SB.key||'';$('#sbTable').value=SB.table||'donations';
+  $('#sbStatus').textContent=DS.origin==='supabase'?`연결됨 · ${SB.table} · ${fmtTime(DS.loadedAt)}에 불러옴`:SB.url?'저장된 연결 정보가 있어요':'연결 안 됨';
+  $('#sbDisconnect').disabled=!!SUPABASE_PRESET.url||!SB.url}
+function checkKey(k){
+  if(!k)throw new Error('anon 키를 입력해 주세요.');
+  if(/^sb_secret_/.test(k))throw new Error('secret 키는 쓸 수 없어요. 브라우저에 노출돼도 되는 anon(publishable) 키를 넣어 주세요.');
+  if(/^eyJ/.test(k)){try{const pl=JSON.parse(atob(k.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));if(pl.role==='service_role')throw 1}catch(e){if(e===1)throw new Error('service_role 키는 쓸 수 없어요. anon 키를 넣어 주세요.')}}
+}
+async function fetchSupabase(cfg){
+  const base=String(cfg.url||'').trim().replace(/\/+$/,''),table=String(cfg.table||'').trim();
+  if(!/^https:\/\/[^/\s]+$/.test(base))throw new Error('Project URL은 https://프로젝트.supabase.co 형식이어야 해요.');
+  if(!table)throw new Error('테이블 이름을 입력해 주세요.');
+  checkKey(cfg.key);
+  const headers={apikey:cfg.key,Accept:'application/json'};if(/^eyJ/.test(cfg.key))headers.Authorization='Bearer '+cfg.key;
+  const req=async(q,extra)=>{
+    let r;try{r=await fetch(`${base}/rest/v1/${encodeURIComponent(table)}?${q}`,{headers:{...headers,...extra}})}catch(e){throw new Error('Supabase에 연결하지 못했어요. URL과 네트워크를 확인해 주세요.')}
+    if(!r.ok){let m='';try{const j=await r.json();m=j.message||j.hint||''}catch(_){}
+      throw new Error(r.status===401||r.status===403?`키가 맞지 않거나 읽기 권한이 없어요 (${r.status}). anon 키와 RLS 정책을 확인해 주세요.`
+        :/does not exist|Could not find|relation/.test(m)||r.status===404?`'${table}' 테이블을 찾을 수 없어요.`:`Supabase 오류 ${r.status}${m?': '+m:''}`)}
+    return r.json();
+  };
+  const probe=await req('select=*&limit=1');
+  if(!probe.length)throw new Error(`'${table}' 테이블에서 읽은 행이 없어요. 테이블이 비어 있거나 RLS 정책이 읽기를 막고 있어요.`);
+  const keys=Object.keys(probe[0]),ti=findCol(keys,'시간');
+  if(ti<0)throw new Error('시간 열(donated_at 또는 시간)이 없어요.');
+  const col=/^[a-z_][a-z0-9_]*$/.test(keys[ti])?keys[ti]:`"${keys[ti]}"`;
+  const PAGE=1000,all=[];
+  for(let from=0;;from+=PAGE){
+    const page=await req(`select=*&order=${encodeURIComponent(col)}.asc`,{'Range-Unit':'items',Range:`${from}-${from+PAGE-1}`});
+    all.push(...page);if(page.length<PAGE||all.length>=200000)break;
+  }
+  const p=parseTable(keys,all.map(o=>keys.map(k=>o[k]==null?'':typeof o[k]==='object'?JSON.stringify(o[k]):String(o[k]))));
+  return{...p,total:all.length,table};
+}
+async function loadSupabase(cfg,{silent}={}){
+  const btns=[$('#sbConnect'),$('#refreshBtn')];btns.forEach(b=>b.disabled=true);$('#sbConnect').textContent='불러오는 중…';
+  try{
+    const r=await fetchSupabase(cfg);
+    SB={url:cfg.url.trim().replace(/\/+$/,''),key:cfg.key.trim(),table:r.table};if(!SUPABASE_PRESET.url)store.set(SBKEY,SB);
+    setData(r.out,r.table,'supabase',null);DS.loadedAt=new Date();persist();
+    resetView();compute();render();openUpload(false);sbFill();
+    if(!silent)notice('ok',`Supabase '${r.table}'에서 ${r.total.toLocaleString()}행을 불러왔어요 · ${fmtYMD(DS.START)} ~ ${fmtYMD(DS.END)} · 도네이터 ${DS.donors.length}명${r.skipped?` · 시간이나 금액이 비어 있는 ${r.skipped}행은 건너뛰었어요`:''}`);
+    return true;
+  }catch(err){notice('err',err.message);openUpload(true,'supa');sbFill();return false}
+  finally{btns.forEach(b=>b.disabled=false);$('#sbConnect').textContent='연결하고 불러오기'}
+}
+$('#supaForm').addEventListener('submit',e=>{e.preventDefault();loadSupabase({url:$('#sbUrl').value,key:$('#sbKey').value.trim(),table:$('#sbTable').value||'donations'})});
+$('#refreshBtn').addEventListener('click',()=>loadSupabase(SB));
+$('#sbDisconnect').addEventListener('click',()=>{SB={url:'',key:'',table:'donations'};try{localStorage.removeItem(SBKEY)}catch(e){}
+  if(DS.origin==='supabase'){loadTexts([SAMPLE.text],SAMPLE.name,'sample');persist();resetView();compute();render()}sbFill();notice('ok','Supabase 연결을 해제했어요')});
+$('#uplOpen').addEventListener('click',()=>{if(!$('#upl').hidden)sbFill()});
+
+(async()=>{
+  const src=store.get(SRCKEY,null),useSB=SUPABASE_PRESET.url||(src==='supabase'&&SB.url&&SB.key);
+  const sample=()=>{loadTexts([SAMPLE.text],SAMPLE.name,'sample');compute();render()};
+  if(useSB){
+    $('#view').innerHTML=`<div class="card"><div class="loading">Supabase '${esc(SB.table)}' 테이블에서 불러오는 중…</div></div>`;
+    try{sample()}catch(e){}  // 실패해도 화면이 비지 않게 먼저 샘플을 깔아 둬요
+    $('#view').innerHTML=`<div class="card"><div class="loading">Supabase '${esc(SB.table)}' 테이블에서 불러오는 중…</div></div>`;
+    if(await loadSupabase(SB,{silent:true}))return;
+    render();notice('err',$('#noticeText').textContent+' · 지금은 기본 파일을 보여 주고 있어요');return;
+  }
   let up=null;try{up=JSON.parse(localStorage.getItem(UPKEY)||'null')}catch(e){}
-  if(up&&up.texts&&up.texts.length){try{loadTexts(up.texts,up.name,'upload');compute();render();notice('ok',`지난번에 올린 ${up.name} 데이터를 불러왔어요`);return}catch(e){try{localStorage.removeItem(UPKEY)}catch(_){}}}
-  try{loadTexts([SAMPLE.text],SAMPLE.name,'sample');compute();render()}catch(err){notice('err',err.message);openUpload(true)}
+  if(src!=='sample'&&up&&up.texts&&up.texts.length){try{loadTexts(up.texts,up.name,'upload');compute();render();notice('ok',`지난번에 올린 ${up.name} 데이터를 불러왔어요`);return}catch(e){try{localStorage.removeItem(UPKEY)}catch(_){}}}
+  try{sample()}catch(err){notice('err',err.message);openUpload(true)}
 })();
 </script>
 </body>
